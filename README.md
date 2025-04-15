@@ -1,15 +1,16 @@
-# CC Monitor - Credit Card Management Application
+# CC Monitor
 
-A modern credit card management application built with React, Vite, Supabase, and shadcn/ui components. This application allows users to manage their credit cards, track balances, and set up payment reminders.
+A modern credit card management application built with React, Vite, and Supabase.
 
 ## Features
 
-- User authentication with Supabase
-- Add and manage credit cards
-- Track credit card balances and limits
-- Set up payment reminders
-- Modern UI with smooth animations
-- Responsive design for all devices
+- **User Authentication**: Secure sign up, login, and sign out functionality
+- **Credit Card Management**: Add, view, edit, and delete credit cards
+- **Payment Reminders**: Set up and manage payment reminders for your credit cards
+- **Dark Mode Support**: Toggle between light and dark themes
+- **Responsive Design**: Works on desktop and mobile devices
+- **Modern UI**: Built with shadcn/ui components and Tailwind CSS
+- **Smooth Animations**: Using Framer Motion for a polished user experience
 
 ## Tech Stack
 
@@ -17,11 +18,10 @@ A modern credit card management application built with React, Vite, Supabase, an
 - **Build Tool**: Vite
 - **Styling**: Tailwind CSS
 - **UI Components**: shadcn/ui
-- **Authentication & Database**: Supabase
+- **Database and Authentication**: Supabase
 - **State Management**: React Query
 - **Form Handling**: React Hook Form with Zod validation
 - **Animations**: Framer Motion
-- **Package Manager**: pnpm
 
 ## Getting Started
 
@@ -35,7 +35,7 @@ A modern credit card management application built with React, Vite, Supabase, an
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/ccmonitor.git
+   git clone https://github.com/jamirineni55/ccmonitor.git
    cd ccmonitor
    ```
 
@@ -44,124 +44,32 @@ A modern credit card management application built with React, Vite, Supabase, an
    pnpm install
    ```
 
-3. Set up environment variables:
-   Create a `.env` file in the root directory with the following variables:
+3. Create a `.env` file in the root directory with your Supabase credentials:
    ```
    VITE_SUPABASE_URL=your_supabase_url
    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
    ```
 
-4. Set up Supabase:
-   - Create a new Supabase project
-   - Set up the following tables:
-     - `credit_cards`: For storing credit card information
-     - `payment_reminders`: For storing payment reminders
-   - Set up Row Level Security (RLS) policies to secure your data
+4. Start the development server:
+   ```bash
+   pnpm dev
+   ```
 
-### Database Schema
+5. Open your browser and navigate to `http://localhost:5173`
 
-#### Credit Cards Table
-```sql
-CREATE TABLE credit_cards (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  number TEXT NOT NULL,
-  expiry_date TEXT NOT NULL,
-  cvv TEXT NOT NULL,
-  card_type TEXT NOT NULL,
-  color TEXT NOT NULL,
-  limit NUMERIC NOT NULL DEFAULT 0,
-  current_balance NUMERIC NOT NULL DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+## Database Setup
 
--- Enable Row Level Security
-ALTER TABLE credit_cards ENABLE ROW LEVEL SECURITY;
+The application requires the following tables in your Supabase database:
 
--- Create policy for users to only see their own credit cards
-CREATE POLICY "Users can only view their own credit cards"
-  ON credit_cards
-  FOR SELECT
-  USING (auth.uid() = user_id);
+1. **credit_cards**: Stores credit card information
+2. **payment_reminders**: Stores payment reminder information
 
-CREATE POLICY "Users can only insert their own credit cards"
-  ON credit_cards
-  FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+Make sure to set up Row Level Security (RLS) policies to ensure users can only access their own data.
 
-CREATE POLICY "Users can only update their own credit cards"
-  ON credit_cards
-  FOR UPDATE
-  USING (auth.uid() = user_id);
+## Contributing
 
-CREATE POLICY "Users can only delete their own credit cards"
-  ON credit_cards
-  FOR DELETE
-  USING (auth.uid() = user_id);
-```
-
-#### Payment Reminders Table
-```sql
-CREATE TABLE payment_reminders (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  credit_card_id UUID NOT NULL REFERENCES credit_cards(id) ON DELETE CASCADE,
-  due_date DATE NOT NULL,
-  amount NUMERIC NOT NULL,
-  is_paid BOOLEAN NOT NULL DEFAULT false,
-  notes TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Enable Row Level Security
-ALTER TABLE payment_reminders ENABLE ROW LEVEL SECURITY;
-
--- Create policy for users to only see their own payment reminders
-CREATE POLICY "Users can only view their own payment reminders"
-  ON payment_reminders
-  FOR SELECT
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can only insert their own payment reminders"
-  ON payment_reminders
-  FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can only update their own payment reminders"
-  ON payment_reminders
-  FOR UPDATE
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can only delete their own payment reminders"
-  ON payment_reminders
-  FOR DELETE
-  USING (auth.uid() = user_id);
-```
-
-### Running the Application
-
-Start the development server:
-```bash
-pnpm dev
-```
-
-The application will be available at `http://localhost:5173`.
-
-### Building for Production
-
-Build the application for production:
-```bash
-pnpm build
-```
-
-Preview the production build:
-```bash
-pnpm preview
-```
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the LICENSE file for details.
