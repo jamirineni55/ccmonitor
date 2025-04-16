@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { format, isBefore, isToday, addDays } from 'date-fns';
 import { z } from 'zod';
-import { useForm } from 'react-hook-form';
+import { useForm, Control, SubmitHandler, Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
 import {
@@ -22,6 +22,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -73,14 +74,14 @@ type PaymentReminderType = {
 
 // Form schema
 const reminderFormSchema = z.object({
-  credit_card_id: z.string().min(1, { message: 'Credit card is required' }),
-  due_date: z.date({
-    required_error: "Due date is required",
-  }),
+  credit_card_id: z.string().min(1, { message: 'Please select a credit card' }),
+  due_date: z.date(),
   amount: z.coerce.number().min(0.01, { message: 'Amount must be greater than 0' }),
   notes: z.string().optional(),
   is_paid: z.boolean().default(false),
 });
+
+type ReminderFormValues = z.infer<typeof reminderFormSchema>;
 
 export default function PaymentReminders() {
   const [reminders, setReminders] = useState<PaymentReminderType[]>([]);
@@ -91,10 +92,11 @@ export default function PaymentReminders() {
   const [reminderToDelete, setReminderToDelete] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('upcoming');
 
-  const form = useForm<z.infer<typeof reminderFormSchema>>({
-    resolver: zodResolver(reminderFormSchema),
+  const form = useForm<ReminderFormValues>({
+    resolver: zodResolver(reminderFormSchema) as Resolver<ReminderFormValues>,
     defaultValues: {
       credit_card_id: '',
+      due_date: undefined as unknown as Date,
       amount: 0,
       notes: '',
       is_paid: false,
@@ -117,6 +119,7 @@ export default function PaymentReminders() {
     } else {
       form.reset({
         credit_card_id: '',
+        due_date: undefined as unknown as Date,
         amount: 0,
         notes: '',
         is_paid: false,
@@ -145,7 +148,7 @@ export default function PaymentReminders() {
     }
   }
 
-  async function onSubmit(values: z.infer<typeof reminderFormSchema>) {
+  async function onSubmit(values: ReminderFormValues) {
     try {
       const reminderData = {
         ...values,
@@ -293,9 +296,9 @@ export default function PaymentReminders() {
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <form onSubmit={form.handleSubmit(onSubmit as SubmitHandler<ReminderFormValues>)} className="space-y-6">
                 <FormField
-                  control={form.control}
+                  control={form.control as Control<ReminderFormValues>}
                   name="credit_card_id"
                   render={({ field }) => (
                     <FormItem>
@@ -322,7 +325,7 @@ export default function PaymentReminders() {
                   )}
                 />
                 <FormField
-                  control={form.control}
+                  control={form.control as Control<ReminderFormValues>}
                   name="due_date"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
@@ -339,7 +342,7 @@ export default function PaymentReminders() {
                   )}
                 />
                 <FormField
-                  control={form.control}
+                  control={form.control as Control<ReminderFormValues>}
                   name="amount"
                   render={({ field }) => (
                     <FormItem>
@@ -358,7 +361,7 @@ export default function PaymentReminders() {
                   )}
                 />
                 <FormField
-                  control={form.control}
+                  control={form.control as Control<ReminderFormValues>}
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
@@ -375,7 +378,7 @@ export default function PaymentReminders() {
                   )}
                 />
                 <FormField
-                  control={form.control}
+                  control={form.control as Control<ReminderFormValues>}
                   name="is_paid"
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">

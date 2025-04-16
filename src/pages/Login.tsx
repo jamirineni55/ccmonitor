@@ -42,7 +42,7 @@ export default function Login() {
     try {
       const { error } = await signIn(values.email, values.password);
       
-      if (error) {
+      if (error && error instanceof Error) {
         toast.error('Login failed', {
           description: error.message || 'Please check your credentials and try again',
         });

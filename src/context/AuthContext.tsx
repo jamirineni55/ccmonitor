@@ -5,17 +5,17 @@ import { type User } from "@supabase/supabase-js";
 type AuthContextType = {
   user: User | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<any>;
-  signUp: (email: string, password: string) => Promise<any>;
-  signOut: () => Promise<any>;
+  signIn: (email: string, password: string) => Promise<{ data: any | null; error: unknown | null }>;
+  signUp: (email: string, password: string) => Promise<{ data: any | null; error: unknown | null }>;
+  signOut: () => Promise<{ error: unknown | null }>;
 };
 
 const initialState = {
   user: null,
   loading: true,
-  signIn: async () => ({}),
-  signUp: async () => ({}),
-  signOut: async () => ({}),
+  signIn: async () => ({ data: null, error: null }),
+  signUp: async () => ({ data: null, error: null }),
+  signOut: async () => ({ error: null }),
 };
 
 const AuthContext = createContext<AuthContextType>(initialState);
@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loadUser();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (_event, session) => {
         if (session?.user) {
           setUser(session.user);
         } else {

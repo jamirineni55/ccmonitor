@@ -11,15 +11,15 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Loader2 } from 'lucide-react';
 
 // Card network options
@@ -191,14 +191,6 @@ export default function EditCreditCard() {
     }
   }
 
-  // Format currency in Indian Rupees
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
 
   if (isLoading) {
     return (
@@ -214,7 +206,7 @@ export default function EditCreditCard() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="mx-auto max-w-2xl px-4 sm:px-6"
+      className="mx-auto max-w-4xl px-4 sm:px-6"
     >
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Edit Credit Card</h1>
@@ -224,9 +216,6 @@ export default function EditCreditCard() {
       <Card>
         <CardHeader>
           <CardTitle>Credit Card Information</CardTitle>
-          <CardDescription>
-            Update the details of your credit card. This information is securely stored.
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -241,9 +230,6 @@ export default function EditCreditCard() {
                       <FormControl>
                         <Input placeholder="e.g. My Visa Card" {...field} />
                       </FormControl>
-                      <FormDescription>
-                        A name to identify this card
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -282,9 +268,6 @@ export default function EditCreditCard() {
                           maxLength={4}
                         />
                       </FormControl>
-                      <FormDescription>
-                        Only enter the last 4 digits of your card
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -333,9 +316,6 @@ export default function EditCreditCard() {
                           }}
                         />
                       </FormControl>
-                      <FormDescription>
-                        Total credit limit (e.g., {formatCurrency(50000)})
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -357,9 +337,6 @@ export default function EditCreditCard() {
                           }}
                         />
                       </FormControl>
-                      <FormDescription>
-                        Current outstanding amount (e.g., {formatCurrency(10000)})
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -373,15 +350,10 @@ export default function EditCreditCard() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Last Bill Date</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="date" 
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Date of your last bill statement
-                      </FormDescription>
+                      <DatePicker
+                        date={field.value ? new Date(field.value) : undefined}
+                        setDate={(date) => field.onChange(date ? date.toISOString().split('T')[0] : '')}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -393,15 +365,10 @@ export default function EditCreditCard() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Last Due Date</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="date" 
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Payment due date for your last bill
-                      </FormDescription>
+                      <DatePicker
+                        date={field.value ? new Date(field.value) : undefined}
+                        setDate={(date) => field.onChange(date ? date.toISOString().split('T')[0] : '')}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -415,12 +382,10 @@ export default function EditCreditCard() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Joining Date</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="date" 
-                          {...field} 
-                        />
-                      </FormControl>
+                      <DatePicker
+                        date={field.value ? new Date(field.value) : undefined}
+                        setDate={(date) => field.onChange(date ? date.toISOString().split('T')[0] : '')}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -442,9 +407,6 @@ export default function EditCreditCard() {
                           }}
                         />
                       </FormControl>
-                      <FormDescription>
-                        One-time joining fee (e.g., {formatCurrency(1000)})
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -466,9 +428,6 @@ export default function EditCreditCard() {
                           }}
                         />
                       </FormControl>
-                      <FormDescription>
-                        Yearly fee (e.g., {formatCurrency(999)})
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -481,7 +440,7 @@ export default function EditCreditCard() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Card Color</FormLabel>
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
                       {cardColors.map((color) => (
                         <div 
                           key={color.value}
@@ -493,9 +452,6 @@ export default function EditCreditCard() {
                         />
                       ))}
                     </div>
-                    <FormDescription>
-                      Choose a color for your card visualization
-                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

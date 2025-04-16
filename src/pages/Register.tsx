@@ -47,7 +47,7 @@ export default function Register() {
     try {
       const { error } = await signUp(values.email, values.password);
       
-      if (error) {
+      if (error && error instanceof Error) {
         toast.error('Registration failed', {
           description: error.message || 'Please try again with a different email',
         });

@@ -1,0 +1,16 @@
+[build]
+  command = "pnpm build"
+  publish = "dist"
+
+[dev]
+  command = "pnpm dev"
+  port = 5173
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[build.environment]
+  VITE_SUPABASE_URL = "https://axygvkowoziodcyvwnac.supabase.co"
+  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4eWd2a293b3ppb2RjeXZ3bmFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ3NDA0NzQsImV4cCI6MjA2MDMxNjQ3NH0.7CuRCjImQ11HNTBLGyg23X9E3mnwgI5mLV5AyJEnsJ4"
