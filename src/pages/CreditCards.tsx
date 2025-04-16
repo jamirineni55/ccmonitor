@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { getCreditCards, deleteCreditCard } from '@/services/supabase';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CreditCard, Plus, Trash2, PencilLine, Calendar, AlertTriangle, Clock, FileText } from 'lucide-react';
+import { CreditCard, Plus, Trash2, PencilLine, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import {
@@ -20,7 +20,7 @@ import {
 
 // Import types and utility functions
 import { CreditCardType } from '@/types/creditCard';
-import { formatCurrency, formatExpiryDate, calculateUtilization, formatDate, isDueDateApproaching } from '@/lib/utils/format';
+import { formatCurrency, formatExpiryDate, calculateUtilization } from '@/lib/utils/format';
 import { containerVariants, itemVariants } from '@/lib/utils/animations';
 
 export default function CreditCards() {
