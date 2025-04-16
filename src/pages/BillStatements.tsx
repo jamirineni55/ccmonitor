@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { FileText, Download, Trash2, Eye, Upload, Loader2, Calendar } from 'lucide-react';
+import { FileText, Download, Trash2, Eye, Upload, Loader2, Calendar, ChevronLeft } from 'lucide-react';
 
 // UI components
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 // Services and types
 import { getCreditCardById, getBillStatements, uploadBillStatement, deleteBillStatement, getStatementUrl } from '@/services/supabase';
@@ -234,22 +235,30 @@ export default function BillStatements() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6 px-4 sm:px-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Bill Statements</h1>
+    <div className="container mx-auto py-4 space-y-4 px-4 sm:px-6 sm:py-6 sm:space-y-6">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center">
+          <Link to="/credit-cards" className="mr-2">
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Bill Statements</h1>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <p className="text-muted-foreground">
             {creditCard ? `Manage bill statements for ${creditCard.card_name}` : 'Loading...'}
           </p>
+          <Button 
+            onClick={() => setUploadDialogOpen(true)}
+            disabled={isLoading || !creditCard}
+            className="w-full sm:w-auto"
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            Upload Statement
+          </Button>
         </div>
-        <Button 
-          onClick={() => setUploadDialogOpen(true)}
-          disabled={isLoading || !creditCard}
-          className="w-full sm:w-auto"
-        >
-          <Upload className="mr-2 h-4 w-4" />
-          Upload Statement
-        </Button>
       </div>
 
       {isLoading ? (
@@ -257,102 +266,162 @@ export default function BillStatements() {
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : statements.length > 0 ? (
-        <div className="rounded-md border w-full max-w-full">
-          <div className="overflow-x-auto max-w-full">
-            <Table className="w-full">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[200px] max-w-[200px]">File Name</TableHead>
-                  <TableHead className="hidden md:table-cell">Bill Date</TableHead>
-                  <TableHead className="hidden md:table-cell">Due Date</TableHead>
-                  <TableHead className="hidden sm:table-cell">Size</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead className="text-right w-[100px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {statements.map((statement) => (
-                  <TableRow key={statement.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex flex-col">
-                        <span className="truncate max-w-[150px]">{statement.file_name}</span>
-                        <span className="text-xs text-muted-foreground sm:hidden">
-                          {formatFileSize(statement.file_size)}
-                        </span>
-                        <div className="flex flex-col md:hidden text-xs text-muted-foreground">
-                          <span>
-                            Bill: {statement.bill_date 
-                              ? format(new Date(statement.bill_date), 'MMM d, yyyy')
-                              : '-'}
-                          </span>
-                          <span>
-                            Due: {statement.due_date 
-                              ? format(new Date(statement.due_date), 'MMM d, yyyy')
-                              : '-'}
-                          </span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {statement.bill_date 
-                        ? format(new Date(statement.bill_date), 'MMM d, yyyy')
-                        : '-'}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {statement.due_date 
-                        ? format(new Date(statement.due_date), 'MMM d, yyyy')
-                        : '-'}
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">{formatFileSize(statement.file_size)}</TableCell>
-                    <TableCell>
+        <div className="space-y-4">
+          {/* Mobile view - Card layout */}
+          <div className="grid grid-cols-1 gap-4 sm:hidden">
+            {statements.map((statement) => (
+              <Card key={statement.id} className="overflow-hidden">
+                <CardHeader className="p-4 pb-2">
+                  <CardTitle className="text-base flex justify-between items-start">
+                    <div className="truncate max-w-[200px]">{statement.file_name}</div>
+                    <div className="text-sm font-normal text-right">
                       {statement.amount 
                         ? new Intl.NumberFormat('en-IN', { 
                             style: 'currency', 
                             currency: 'INR' 
                           }).format(statement.amount)
                         : '-'}
-                    </TableCell>
-                    <TableCell className="text-right p-2">
-                      <div className="flex justify-end items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleViewStatement(statement)}
-                          title="View Statement"
-                          className="h-8 w-8"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDownloadStatement(statement)}
-                          title="Download Statement"
-                          className="h-8 w-8"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteStatement(statement)}
-                          title="Delete Statement"
-                          className="h-8 w-8"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-2">
+                  <div className="text-sm text-muted-foreground mb-2">
+                    <div className="flex justify-between">
+                      <span>Bill Date:</span>
+                      <span>
+                        {statement.bill_date 
+                          ? format(new Date(statement.bill_date), 'MMM d, yyyy')
+                          : '-'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Due Date:</span>
+                      <span>
+                        {statement.due_date 
+                          ? format(new Date(statement.due_date), 'MMM d, yyyy')
+                          : '-'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Size:</span>
+                      <span>{formatFileSize(statement.file_size)}</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-end items-center gap-1 mt-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleViewStatement(statement)}
+                      title="View Statement"
+                      className="h-8 w-8"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDownloadStatement(statement)}
+                      title="Download Statement"
+                      className="h-8 w-8"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteStatement(statement)}
+                      title="Delete Statement"
+                      className="h-8 w-8"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          
+          {/* Desktop view - Table layout */}
+          <div className="hidden sm:block rounded-md border w-full max-w-full">
+            <div className="overflow-x-auto max-w-full">
+              <Table className="w-full">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[200px] max-w-[200px]">File Name</TableHead>
+                    <TableHead>Bill Date</TableHead>
+                    <TableHead>Due Date</TableHead>
+                    <TableHead>Size</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead className="text-right w-[100px]">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {statements.map((statement) => (
+                    <TableRow key={statement.id}>
+                      <TableCell className="font-medium truncate max-w-[200px]">
+                        {statement.file_name}
+                      </TableCell>
+                      <TableCell>
+                        {statement.bill_date 
+                          ? format(new Date(statement.bill_date), 'MMM d, yyyy')
+                          : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {statement.due_date 
+                          ? format(new Date(statement.due_date), 'MMM d, yyyy')
+                          : '-'}
+                      </TableCell>
+                      <TableCell>{formatFileSize(statement.file_size)}</TableCell>
+                      <TableCell>
+                        {statement.amount 
+                          ? new Intl.NumberFormat('en-IN', { 
+                              style: 'currency', 
+                              currency: 'INR' 
+                            }).format(statement.amount)
+                          : '-'}
+                      </TableCell>
+                      <TableCell className="text-right p-2">
+                        <div className="flex justify-end items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleViewStatement(statement)}
+                            title="View Statement"
+                            className="h-8 w-8"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDownloadStatement(statement)}
+                            title="Download Statement"
+                            className="h-8 w-8"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteStatement(statement)}
+                            title="Delete Statement"
+                            className="h-8 w-8"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </div>
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center rounded-md border border-dashed p-8 text-center animate-in fade-in-50">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-            <FileText className="h-10 w-10 text-primary" />
+        <div className="flex flex-col items-center justify-center rounded-md border border-dashed p-6 sm:p-8 text-center animate-in fade-in-50">
+          <div className="flex h-16 sm:h-20 w-16 sm:w-20 items-center justify-center rounded-full bg-primary/10">
+            <FileText className="h-8 sm:h-10 w-8 sm:w-10 text-primary" />
           </div>
           <h3 className="mt-4 text-lg font-semibold">No statements found</h3>
           <p className="mb-4 mt-2 text-sm text-muted-foreground max-w-xs">
@@ -366,7 +435,7 @@ export default function BillStatements() {
       )}
 
       <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-w-[95vw] rounded-lg">
           <DialogHeader>
             <DialogTitle>Upload Bill Statement</DialogTitle>
             <DialogDescription>
@@ -382,7 +451,7 @@ export default function BillStatements() {
                   type="file"
                   accept="application/pdf"
                   onChange={handleFileChange}
-                  className="flex-1"
+                  className="flex-1 text-sm"
                 />
               </div>
             </div>
@@ -439,7 +508,7 @@ export default function BillStatements() {
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="amount">Statement Amount</Label>
+              <Label htmlFor="amount">Statement Amount (₹)</Label>
               <Input
                 id="amount"
                 type="number"
@@ -449,7 +518,7 @@ export default function BillStatements() {
               />
             </div>
           </div>
-          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-2">
             <Button
               variant="outline"
               onClick={() => {

@@ -8,7 +8,7 @@ import {
   LayoutDashboard, 
   LogOut, 
   Menu, 
-  X 
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeToggle } from '@/components/ThemeToggle';

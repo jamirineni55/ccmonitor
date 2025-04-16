@@ -4,8 +4,7 @@ import { getCreditCardById, updateCreditCard } from '@/services/supabase';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { motion } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ArrowLeft } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -132,26 +131,34 @@ export default function EditCreditCard() {
     }
   }
 
-
   if (isLoading) {
     return (
-      <div className="flex h-96 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="ml-2 text-muted-foreground">Loading credit card details...</p>
+      <div className="container mx-auto py-4 px-4 sm:px-6">
+        <div className="flex h-96 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="ml-2 text-muted-foreground">Loading credit card details...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="mx-auto max-w-4xl px-4 sm:px-6"
-    >
-      <div className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Edit Credit Card</h1>
-        <p className="text-muted-foreground">Update your credit card details</p>
+    <div className="container mx-auto py-4 space-y-4 px-4 sm:px-6 sm:py-6 sm:space-y-6">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="mr-2"
+            onClick={() => navigate('/credit-cards')}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Edit Credit Card</h1>
+        </div>
+        <p className="text-muted-foreground">
+          Update your credit card details
+        </p>
       </div>
 
       <Card>
@@ -493,6 +500,6 @@ export default function EditCreditCard() {
           </Form>
         </CardContent>
       </Card>
-    </motion.div>
+    </div>
   );
 }

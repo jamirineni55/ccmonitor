@@ -6,8 +6,8 @@ export type CreditCardType = {
   bank_name: string;
   last_bill_date: string;
   last_due_date: string;
-  bill_cycle_days: number;
   credit_limit: number;
+  bill_cycle_days: number;
   current_balance: number;
   available_credit: number;
   joining_date: string;

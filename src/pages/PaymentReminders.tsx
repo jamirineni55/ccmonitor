@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { getPaymentReminders, getCreditCards, addPaymentReminder, updatePaymentReminder, deletePaymentReminder } from '@/services/supabase';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CalendarClock, Plus, Check, AlertTriangle, CreditCard, Trash2 } from 'lucide-react';
+import { CalendarClock, Plus, Check, AlertTriangle, Trash2, ChevronLeft, PencilLine } from 'lucide-react';
 import { toast } from 'sonner';
-import { motion } from 'framer-motion';
 import { format, isBefore, isToday, addDays } from 'date-fns';
-import { z } from 'zod';
-import { useForm, Control, SubmitHandler, Resolver } from 'react-hook-form';
+import { useForm, Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
 import {
@@ -49,39 +48,9 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-
-// Types for our data
-type CreditCardType = {
-  id: string;
-  name: string;
-  number: string;
-  card_type: string;
-  color: string;
-  limit: number;
-  current_balance: number;
-};
-
-type PaymentReminderType = {
-  id: string;
-  credit_card_id: string;
-  due_date: string;
-  amount: number;
-  is_paid: boolean;
-  notes?: string;
-  user_id: string;
-  created_at: string;
-};
-
-// Form schema
-const reminderFormSchema = z.object({
-  credit_card_id: z.string().min(1, { message: 'Please select a credit card' }),
-  due_date: z.date(),
-  amount: z.coerce.number().min(0.01, { message: 'Amount must be greater than 0' }),
-  notes: z.string().optional(),
-  is_paid: z.boolean().default(false),
-});
-
-type ReminderFormValues = z.infer<typeof reminderFormSchema>;
+import { PaymentReminderType } from '@/types/paymentReminder';
+import { CreditCardType } from '@/types/creditCard';
+import { reminderFormSchema, ReminderFormValues } from '@/types/schemas';
 
 export default function PaymentReminders() {
   const [reminders, setReminders] = useState<PaymentReminderType[]>([]);
@@ -150,28 +119,26 @@ export default function PaymentReminders() {
 
   async function onSubmit(values: ReminderFormValues) {
     try {
-      const reminderData = {
-        ...values,
-        due_date: format(values.due_date, 'yyyy-MM-dd'),
-      };
-      
       if (editingReminder) {
         // Update existing reminder
-        const { error } = await updatePaymentReminder(editingReminder.id, reminderData);
+        const { error } = await updatePaymentReminder(editingReminder.id, values);
+        
         if (error) throw error;
         
-        setReminders(prev => 
-          prev.map(reminder => 
-            reminder.id === editingReminder.id 
-              ? { ...reminder, ...reminderData }
-              : reminder
-          )
-        );
+        setReminders(prev => prev.map(reminder => 
+          reminder.id === editingReminder.id 
+            ? { ...reminder, ...values, due_date: values.due_date.toISOString() } 
+            : reminder
+        ));
         
         toast.success('Payment reminder updated');
       } else {
         // Add new reminder
-        const { data, error } = await addPaymentReminder(reminderData);
+        const { data, error } = await addPaymentReminder({
+          ...values,
+          due_date: values.due_date.toISOString(),
+        });
+        
         if (error) throw error;
         
         if (data) {
@@ -183,9 +150,32 @@ export default function PaymentReminders() {
       
       setIsDialogOpen(false);
       setEditingReminder(null);
+      form.reset();
     } catch (error) {
       console.error('Error saving payment reminder:', error);
       toast.error('Failed to save payment reminder');
+    }
+  }
+
+  async function handleToggleStatus(reminder: PaymentReminderType) {
+    try {
+      const { error } = await updatePaymentReminder(reminder.id, {
+        ...reminder,
+        is_paid: !reminder.is_paid,
+      });
+      
+      if (error) throw error;
+      
+      setReminders(prev => prev.map(r => 
+        r.id === reminder.id 
+          ? { ...r, is_paid: !r.is_paid } 
+          : r
+      ));
+      
+      toast.success(`Payment marked as ${!reminder.is_paid ? 'paid' : 'unpaid'}`);
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      toast.error('Failed to update payment status');
     }
   }
 
@@ -197,7 +187,8 @@ export default function PaymentReminders() {
       
       if (error) throw error;
       
-      setReminders(prev => prev.filter(reminder => reminder.id !== reminderToDelete));
+      setReminders(prev => prev.filter(r => r.id !== reminderToDelete));
+      
       toast.success('Payment reminder deleted');
     } catch (error) {
       console.error('Error deleting payment reminder:', error);
@@ -264,150 +255,158 @@ export default function PaymentReminders() {
   const paidReminders = reminders.filter(reminder => reminder.is_paid);
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Payment Reminders</h1>
-          <p className="text-muted-foreground mt-1">
+    <div className="container mx-auto py-4 space-y-4 px-4 sm:px-6 sm:py-6 sm:space-y-6">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center">
+          <Link to="/" className="mr-2">
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Payment Reminders</h1>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <p className="text-muted-foreground">
             Track and manage your credit card payment due dates
           </p>
-        </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button 
-              onClick={() => {
-                setEditingReminder(null);
-                setIsDialogOpen(true);
-              }}
-              className="gap-1.5"
-            >
-              <Plus className="h-4 w-4" />
-              Add Reminder
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>{editingReminder ? 'Edit Payment Reminder' : 'Add Payment Reminder'}</DialogTitle>
-              <DialogDescription>
-                {editingReminder 
-                  ? 'Update the payment reminder details below'
-                  : 'Add a new payment reminder for your credit card'
-                }
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit as SubmitHandler<ReminderFormValues>)} className="space-y-6">
-                <FormField
-                  control={form.control as Control<ReminderFormValues>}
-                  name="credit_card_id"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Credit Card</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        defaultValue={field.value}
-                      >
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                onClick={() => {
+                  setEditingReminder(null);
+                  setIsDialogOpen(true);
+                }}
+                className="w-full sm:w-auto"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Reminder
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px] max-w-[95vw] rounded-lg">
+              <DialogHeader>
+                <DialogTitle>{editingReminder ? 'Edit Payment Reminder' : 'Add Payment Reminder'}</DialogTitle>
+                <DialogDescription>
+                  {editingReminder 
+                    ? 'Update the payment reminder details below'
+                    : 'Add a new payment reminder for your credit card'
+                  }
+                </DialogDescription>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="credit_card_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Credit Card</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a credit card" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {creditCards.map(card => (
+                              <SelectItem key={card.id} value={card.id}>
+                                {card.card_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="due_date"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Due Date</FormLabel>
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) => date < new Date('1900-01-01')}
+                          className="rounded-md border shadow"
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="amount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Amount (₹)</FormLabel>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a credit card" />
-                          </SelectTrigger>
+                          <Input 
+                            type="number" 
+                            min="0.01" 
+                            step="0.01" 
+                            placeholder="0.00" 
+                            {...field} 
+                          />
                         </FormControl>
-                        <SelectContent>
-                          {creditCards.map(card => (
-                            <SelectItem key={card.id} value={card.id}>
-                              {card.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control as Control<ReminderFormValues>}
-                  name="due_date"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Due Date</FormLabel>
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        disabled={(date) => date < new Date('1900-01-01')}
-                        className="rounded-md border shadow"
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control as Control<ReminderFormValues>}
-                  name="amount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Amount</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          min="0.01" 
-                          step="0.01" 
-                          placeholder="0.00" 
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control as Control<ReminderFormValues>}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Notes (Optional)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="Add notes about this payment" 
-                          {...field} 
-                          value={field.value || ''}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control as Control<ReminderFormValues>}
-                  name="is_paid"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">
-                          Mark as Paid
-                        </FormLabel>
-                        <FormDescription>
-                          Toggle if this payment has been completed
-                        </FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <DialogFooter>
-                  <Button type="submit">
-                    {editingReminder ? 'Update Reminder' : 'Add Reminder'}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Notes (Optional)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Add notes about this payment" 
+                            {...field} 
+                            value={field.value || ''}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="is_paid"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">
+                            Mark as Paid
+                          </FormLabel>
+                          <FormDescription>
+                            Toggle if this payment has been completed
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-2">
+                    <Button type="submit" className="w-full sm:w-auto">
+                      {editingReminder ? 'Update Reminder' : 'Add Reminder'}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Tabs defaultValue="upcoming" value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -449,126 +448,87 @@ export default function PaymentReminders() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {upcomingReminders
-                .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
-                .map((reminder) => {
-                  const card = getCreditCardById(reminder.credit_card_id);
-                  return (
-                    <motion.div
-                      key={reminder.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <Card className="overflow-hidden h-full">
-                        <div 
-                          className="h-2" 
-                          style={{ backgroundColor: card?.color || '#888888' }}
-                        />
-                        <CardHeader className="pb-2">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <CardTitle className="flex items-center gap-2">
-                                <span>{card?.name || 'Unknown Card'}</span>
-                              </CardTitle>
-                              <CardDescription>
-                                Due {format(new Date(reminder.due_date), 'MMMM d, yyyy')}
-                              </CardDescription>
-                            </div>
-                            <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  setEditingReminder(reminder);
-                                  setIsDialogOpen(true);
-                                }}
-                                className="h-8 w-8"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pencil"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                                <span className="sr-only">Edit</span>
-                              </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-destructive hover:text-destructive"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                    <span className="sr-only">Delete</span>
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete Payment Reminder</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Are you sure you want to delete this payment reminder? This action cannot be undone.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction 
-                                      onClick={() => {
-                                        setReminderToDelete(reminder.id);
-                                        handleDeleteReminder();
-                                      }}
-                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                    >
-                                      Delete
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="pb-4">
-                          <div className="flex justify-between items-center mb-4">
-                            <div className="flex items-center gap-1">
-                              <CreditCard className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm text-muted-foreground">
-                                {card?.card_type || 'Credit Card'}
-                              </span>
-                            </div>
-                            <div className={`px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(reminder.due_date, reminder.is_paid)}`}>
-                              {getStatusIcon(reminder.due_date, reminder.is_paid)}
-                              {getStatusText(reminder.due_date, reminder.is_paid)}
-                            </div>
-                          </div>
-                          <div className="flex flex-col gap-2">
-                            <div className="flex justify-between">
-                              <span className="text-sm font-medium">Amount Due</span>
-                              <span className="text-sm font-bold">${reminder.amount.toFixed(2)}</span>
-                            </div>
-                            {reminder.notes && (
-                              <div className="mt-2 text-sm text-muted-foreground">
-                                <p className="italic">{reminder.notes}</p>
-                              </div>
-                            )}
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="mt-2 w-full gap-1.5"
-                              onClick={() => {
-                                setEditingReminder(reminder);
-                                form.setValue('is_paid', true);
-                                onSubmit({
-                                  ...form.getValues(),
-                                  is_paid: true,
-                                });
-                              }}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {upcomingReminders.map(reminder => {
+                const card = getCreditCardById(reminder.credit_card_id);
+                
+                return (
+                  <Card key={reminder.id} className="overflow-hidden">
+                    <CardHeader className="p-4 pb-2">
+                      <div className="flex justify-between items-start">
+                        <CardTitle className="text-base">
+                          {card?.card_name || 'Unknown Card'}
+                        </CardTitle>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => {
+                              setEditingReminder(reminder);
+                              setIsDialogOpen(true);
+                            }}
+                          >
+                            <PencilLine className="h-4 w-4" />
+                          </Button>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => setReminderToDelete(reminder.id)}
                             >
-                              <Check className="h-4 w-4" />
-                              Mark as Paid
+                              <Trash2 className="h-4 w-4" />
                             </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  );
-                })}
+                          </AlertDialogTrigger>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      <div className="flex justify-between items-center mb-3">
+                        <div className="text-sm text-muted-foreground">
+                          Due Date
+                        </div>
+                        <div className="font-medium">
+                          {format(new Date(reminder.due_date), 'dd MMM yyyy')}
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center mb-4">
+                        <div className="text-sm text-muted-foreground">
+                          Amount
+                        </div>
+                        <div className="font-medium">
+                          {new Intl.NumberFormat('en-IN', { 
+                            style: 'currency', 
+                            currency: 'INR' 
+                          }).format(reminder.amount)}
+                        </div>
+                      </div>
+                      
+                      {reminder.notes && (
+                        <div className="mb-4 text-sm">
+                          <div className="text-muted-foreground mb-1">Notes</div>
+                          <div className="bg-muted p-2 rounded-md">{reminder.notes}</div>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between items-center">
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(reminder.due_date, reminder.is_paid)}`}>
+                          {getStatusIcon(reminder.due_date, reminder.is_paid)}
+                          {getStatusText(reminder.due_date, reminder.is_paid)}
+                        </span>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleToggleStatus(reminder)}
+                        >
+                          Mark as Paid
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </TabsContent>
@@ -583,136 +543,114 @@ export default function PaymentReminders() {
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                 <Check className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium">No paid payments</h3>
-                <p className="text-muted-foreground mt-1">
-                  You haven't marked any payments as paid yet
+                <p className="text-muted-foreground mt-1 mb-4">
+                  You don't have any paid payment reminders
                 </p>
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {paidReminders
-                .sort((a, b) => new Date(b.due_date).getTime() - new Date(a.due_date).getTime())
-                .map((reminder) => {
-                  const card = getCreditCardById(reminder.credit_card_id);
-                  return (
-                    <motion.div
-                      key={reminder.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <Card className="overflow-hidden h-full opacity-80">
-                        <div 
-                          className="h-2" 
-                          style={{ backgroundColor: card?.color || '#888888' }}
-                        />
-                        <CardHeader className="pb-2">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <CardTitle className="flex items-center gap-2">
-                                <span>{card?.name || 'Unknown Card'}</span>
-                              </CardTitle>
-                              <CardDescription>
-                                Due {format(new Date(reminder.due_date), 'MMMM d, yyyy')}
-                              </CardDescription>
-                            </div>
-                            <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  setEditingReminder(reminder);
-                                  setIsDialogOpen(true);
-                                }}
-                                className="h-8 w-8"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pencil"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                                <span className="sr-only">Edit</span>
-                              </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-destructive hover:text-destructive"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                    <span className="sr-only">Delete</span>
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete Payment Reminder</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Are you sure you want to delete this payment reminder? This action cannot be undone.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction 
-                                      onClick={() => {
-                                        setReminderToDelete(reminder.id);
-                                        handleDeleteReminder();
-                                      }}
-                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                    >
-                                      Delete
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="pb-4">
-                          <div className="flex justify-between items-center mb-4">
-                            <div className="flex items-center gap-1">
-                              <CreditCard className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm text-muted-foreground">
-                                {card?.card_type || 'Credit Card'}
-                              </span>
-                            </div>
-                            <div className={`px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(reminder.due_date, reminder.is_paid)}`}>
-                              {getStatusIcon(reminder.due_date, reminder.is_paid)}
-                              {getStatusText(reminder.due_date, reminder.is_paid)}
-                            </div>
-                          </div>
-                          <div className="flex flex-col gap-2">
-                            <div className="flex justify-between">
-                              <span className="text-sm font-medium">Amount Paid</span>
-                              <span className="text-sm font-bold">${reminder.amount.toFixed(2)}</span>
-                            </div>
-                            {reminder.notes && (
-                              <div className="mt-2 text-sm text-muted-foreground">
-                                <p className="italic">{reminder.notes}</p>
-                              </div>
-                            )}
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="mt-2 w-full gap-1.5"
-                              onClick={() => {
-                                setEditingReminder(reminder);
-                                form.setValue('is_paid', false);
-                                onSubmit({
-                                  ...form.getValues(),
-                                  is_paid: false,
-                                });
-                              }}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {paidReminders.map(reminder => {
+                const card = getCreditCardById(reminder.credit_card_id);
+                
+                return (
+                  <Card key={reminder.id} className="overflow-hidden">
+                    <CardHeader className="p-4 pb-2">
+                      <div className="flex justify-between items-start">
+                        <CardTitle className="text-base">
+                          {card?.card_name || 'Unknown Card'}
+                        </CardTitle>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => {
+                              setEditingReminder(reminder);
+                              setIsDialogOpen(true);
+                            }}
+                          >
+                            <PencilLine className="h-4 w-4" />
+                          </Button>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => setReminderToDelete(reminder.id)}
                             >
-                              <AlertTriangle className="h-4 w-4" />
-                              Mark as Unpaid
+                              <Trash2 className="h-4 w-4" />
                             </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  );
-                })}
+                          </AlertDialogTrigger>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      <div className="flex justify-between items-center mb-3">
+                        <div className="text-sm text-muted-foreground">
+                          Due Date
+                        </div>
+                        <div className="font-medium">
+                          {format(new Date(reminder.due_date), 'dd MMM yyyy')}
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center mb-4">
+                        <div className="text-sm text-muted-foreground">
+                          Amount
+                        </div>
+                        <div className="font-medium">
+                          {new Intl.NumberFormat('en-IN', { 
+                            style: 'currency', 
+                            currency: 'INR' 
+                          }).format(reminder.amount)}
+                        </div>
+                      </div>
+                      
+                      {reminder.notes && (
+                        <div className="mb-4 text-sm">
+                          <div className="text-muted-foreground mb-1">Notes</div>
+                          <div className="bg-muted p-2 rounded-md">{reminder.notes}</div>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between items-center">
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(reminder.due_date, reminder.is_paid)}`}>
+                          {getStatusIcon(reminder.due_date, reminder.is_paid)}
+                          {getStatusText(reminder.due_date, reminder.is_paid)}
+                        </span>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleToggleStatus(reminder)}
+                        >
+                          Mark as Unpaid
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </TabsContent>
       </Tabs>
+      
+      <AlertDialog>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this payment reminder.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setReminderToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteReminder} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

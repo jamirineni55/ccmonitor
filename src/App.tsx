@@ -3,15 +3,15 @@ import { Toaster } from '@/components/ui/sonner'
 import { AuthProvider, useAuth } from './context/AuthContext'
 
 // Pages
-import Dashboard from './pages/Dashboard'
-import Login from './pages/Login'
-import Register from './pages/Register'
-import CreditCards from './pages/CreditCards'
-import AddCreditCard from './pages/AddCreditCard'
-import EditCreditCard from './pages/EditCreditCard'
+import Dashboard from '@/pages/Dashboard'
+import Login from '@/pages/Login'
+import Register from '@/pages/Register'
+import CreditCards from '@/pages/CreditCards'
+import AddCreditCard from '@/pages/AddCreditCard'
+import EditCreditCard from '@/pages/EditCreditCard'
 import BillStatements from './pages/BillStatements'
 import PaymentReminders from './pages/PaymentReminders'
-import Layout from './components/Layout'
+import Layout from '@/components/Layout'
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
