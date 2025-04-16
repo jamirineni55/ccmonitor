@@ -54,6 +54,20 @@ export async function getCreditCards() {
     .order('created_at', { ascending: false });
 }
 
+export async function getCreditCardById(id: string) {
+  const { data: user } = await supabase.auth.getUser();
+  
+  if (!user.user) {
+    throw new Error('User not authenticated');
+  }
+  
+  return supabase
+    .from('credit_cards')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', user.user.id);
+}
+
 export async function updateCreditCard(id: string, cardData: any) {
   return supabase
     .from('credit_cards')

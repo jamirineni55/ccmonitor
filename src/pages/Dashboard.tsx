@@ -3,20 +3,21 @@ import { Link } from 'react-router-dom';
 import { getCreditCards, getPaymentReminders } from '@/services/supabase';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CreditCard, CalendarClock, Plus, AlertTriangle } from 'lucide-react';
+import { CreditCard, CalendarClock, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { format, isBefore, addDays } from 'date-fns';
+import { isBefore, addDays } from 'date-fns';
 
 // Types for our data
 type CreditCardType = {
   id: string;
-  name: string;
-  number: string;
+  card_name: string;
+  bank_name: string;
+  last_four_digits: string;
   expiry_date: string;
   cvv: string;
   card_type: string;
   color: string;
-  limit: number;
+  credit_limit: number;
   current_balance: number;
   user_id: string;
   created_at: string;
@@ -66,7 +67,7 @@ export default function Dashboard() {
   const totalBalance = creditCards.reduce((sum, card) => sum + (card.current_balance || 0), 0);
   
   // Calculate total credit limit
-  const totalLimit = creditCards.reduce((sum, card) => sum + (card.limit || 0), 0);
+  const totalLimit = creditCards.reduce((sum, card) => sum + (card.credit_limit || 0), 0);
   
   // Get upcoming payment reminders (due within 7 days and not paid)
   const upcomingReminders = paymentReminders
@@ -74,12 +75,27 @@ export default function Dashboard() {
     .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
     .slice(0, 3);
 
-  // Format currency
+  // Format currency in Indian Rupees
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
+      maximumFractionDigits: 0
     }).format(amount);
+  };
+
+  // Format date in Indian format (DD-MMM-YYYY)
+  const formatDate = (date: string) => {
+    if (!date) return 'N/A';
+    const dateObj = new Date(date);
+    
+    // Format as DD-MMM-YYYY (Indian format)
+    const day = dateObj.getDate().toString().padStart(2, '0');
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = monthNames[dateObj.getMonth()];
+    const year = dateObj.getFullYear();
+    
+    return `${day}-${month}-${year}`;
   };
 
   // Get card by ID
@@ -130,14 +146,15 @@ export default function Dashboard() {
           <Button asChild>
             <Link to="/credit-cards/add">
               <Plus className="mr-2 h-4 w-4" />
-              Add Credit Card
+              <span className="hidden sm:inline">Add Credit Card</span>
+              <span className="sm:hidden">Add</span>
             </Link>
           </Button>
         </div>
       </div>
 
       {/* Overview Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         <motion.div variants={itemVariants}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -206,27 +223,26 @@ export default function Dashboard() {
                 {creditCards.slice(0, 3).map((card) => (
                   <div 
                     key={card.id}
-                    className="relative overflow-hidden rounded-lg p-6 text-white"
-                    style={{ 
-                      backgroundColor: card.color || '#1e293b',
-                      backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)'
-                    }}
+                    className="flex items-center justify-between rounded-lg border p-4"
                   >
-                    <div className="mb-4 flex justify-between">
-                      <div className="font-medium">{card.name}</div>
-                      <div className="text-sm opacity-80">{card.card_type}</div>
-                    </div>
-                    <div className="mb-6 text-lg font-bold">
-                      •••• •••• •••• {card.number.slice(-4)}
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <div>
-                        <div className="opacity-80">Current Balance</div>
-                        <div className="font-medium">{formatCurrency(card.current_balance)}</div>
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="h-10 w-10 rounded-full flex items-center justify-center text-white"
+                        style={{ backgroundColor: card.color || '#1e293b' }}
+                      >
+                        <CreditCard className="h-5 w-5" />
                       </div>
                       <div>
-                        <div className="opacity-80">Limit</div>
-                        <div className="font-medium">{formatCurrency(card.limit)}</div>
+                        <div className="font-medium">{card.card_name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {card.bank_name} • •••• {card.last_four_digits}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium">{formatCurrency(card.current_balance)}</div>
+                      <div className="text-sm text-muted-foreground">
+                        of {formatCurrency(card.credit_limit)}
                       </div>
                     </div>
                   </div>
@@ -266,35 +282,47 @@ export default function Dashboard() {
               <div className="space-y-4">
                 {upcomingReminders.map((reminder) => {
                   const card = getCardById(reminder.credit_card_id);
-                  const isPastDue = isBefore(new Date(reminder.due_date), new Date());
+                  const dueDate = new Date(reminder.due_date);
+                  const isOverdue = isBefore(dueDate, new Date());
+                  const isDueToday = dueDate.toDateString() === new Date().toDateString();
                   
                   return (
                     <div 
                       key={reminder.id}
-                      className="flex items-center justify-between rounded-lg border p-4"
+                      className={`flex items-center justify-between rounded-lg border p-4 ${
+                        isOverdue ? 'border-destructive/50 bg-destructive/5' : 
+                        isDueToday ? 'border-primary/50 bg-primary/5' : ''
+                      }`}
                     >
-                      <div className="flex items-center gap-4">
-                        <div 
-                          className="h-10 w-10 rounded-full flex items-center justify-center text-white"
-                          style={{ backgroundColor: card?.color || '#1e293b' }}
-                        >
-                          <CreditCard className="h-5 w-5" />
-                        </div>
+                      <div className="flex items-center gap-3">
+                        {card && (
+                          <div 
+                            className="h-10 w-10 rounded-full flex items-center justify-center text-white"
+                            style={{ backgroundColor: card.color || '#1e293b' }}
+                          >
+                            <CreditCard className="h-5 w-5" />
+                          </div>
+                        )}
                         <div>
-                          <div className="font-medium">{card?.name || 'Unknown Card'}</div>
-                          <div className="text-sm text-muted-foreground">
-                            Due on {format(new Date(reminder.due_date), 'MMM d, yyyy')}
+                          <div className="font-medium">{card?.card_name || 'Unknown Card'}</div>
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <CalendarClock className="mr-1 h-3 w-3" />
+                            {formatDate(reminder.due_date)}
+                            {isOverdue && (
+                              <span className="ml-2 inline-flex items-center rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                                Overdue
+                              </span>
+                            )}
+                            {isDueToday && (
+                              <span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                                Today
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {isPastDue && (
-                          <div className="mr-2 flex items-center text-destructive">
-                            <AlertTriangle className="mr-1 h-4 w-4" />
-                            <span className="text-sm font-medium">Past Due</span>
-                          </div>
-                        )}
-                        <div className="font-bold">{formatCurrency(reminder.amount)}</div>
+                      <div className="text-right">
+                        <div className="font-medium">{formatCurrency(reminder.amount)}</div>
                       </div>
                     </div>
                   );

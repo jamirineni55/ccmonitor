@@ -8,6 +8,7 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import CreditCards from './pages/CreditCards'
 import AddCreditCard from './pages/AddCreditCard'
+import EditCreditCard from './pages/EditCreditCard'
 import PaymentReminders from './pages/PaymentReminders'
 import Layout from './components/Layout'
 
@@ -41,6 +42,7 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="credit-cards" element={<CreditCards />} />
             <Route path="credit-cards/add" element={<AddCreditCard />} />
+            <Route path="credit-cards/edit/:id" element={<EditCreditCard />} />
             <Route path="payment-reminders" element={<PaymentReminders />} />
           </Route>
         </Routes>
