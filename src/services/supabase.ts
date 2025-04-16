@@ -133,3 +133,104 @@ export async function deletePaymentReminder(id: string) {
     .delete()
     .eq('id', id);
 }
+
+// Storage related functions
+export async function uploadBillStatement(creditCardId: string, file: File, metadata: {
+  bill_date: string;
+  due_date: string;
+  amount: number;
+}) {
+  const { data: user } = await supabase.auth.getUser();
+  
+  if (!user.user) {
+    throw new Error('User not authenticated');
+  }
+  
+  const fileName = `${Date.now()}_${file.name}`;
+  const filePath = `${user.user.id}/${creditCardId}/${fileName}`;
+  
+  const { error } = await supabase.storage
+    .from('bill_statements')
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: false
+    });
+  
+  if (error) {
+    throw error;
+  }
+  
+  // Add record to bill_statements table
+  const { data: statementData, error: statementError } = await supabase
+    .from('bill_statements')
+    .insert({
+      credit_card_id: creditCardId,
+      file_name: fileName,
+      file_path: filePath,
+      file_size: file.size,
+      file_type: file.type,
+      user_id: user.user.id,
+      bill_date: metadata.bill_date,
+      due_date: metadata.due_date,
+      amount: metadata.amount
+    })
+    .select();
+  
+  if (statementError) {
+    // If there was an error creating the record, delete the uploaded file
+    await supabase.storage.from('bill_statements').remove([filePath]);
+    throw statementError;
+  }
+  
+  return { data: statementData, error: null };
+}
+
+export async function getBillStatements(creditCardId: string) {
+  const { data: user } = await supabase.auth.getUser();
+  
+  if (!user.user) {
+    throw new Error('User not authenticated');
+  }
+  
+  return supabase
+    .from('bill_statements')
+    .select('*')
+    .eq('credit_card_id', creditCardId)
+    .eq('user_id', user.user.id)
+    .order('created_at', { ascending: false });
+}
+
+export async function deleteBillStatement(statementId: string) {
+  const { data: statement } = await supabase
+    .from('bill_statements')
+    .select('file_path')
+    .eq('id', statementId)
+    .single();
+  
+  if (!statement) {
+    throw new Error('Statement not found');
+  }
+  
+  // Delete file from storage
+  const { error: storageError } = await supabase.storage
+    .from('bill_statements')
+    .remove([statement.file_path]);
+  
+  if (storageError) {
+    throw storageError;
+  }
+  
+  // Delete record from database
+  return supabase
+    .from('bill_statements')
+    .delete()
+    .eq('id', statementId);
+}
+
+export async function getStatementUrl(filePath: string) {
+  const { data } = await supabase.storage
+    .from('bill_statements')
+    .createSignedUrl(filePath, 60 * 60); // 1 hour expiry
+  
+  return data?.signedUrl;
+}

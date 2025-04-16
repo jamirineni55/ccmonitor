@@ -9,6 +9,7 @@ import Register from './pages/Register'
 import CreditCards from './pages/CreditCards'
 import AddCreditCard from './pages/AddCreditCard'
 import EditCreditCard from './pages/EditCreditCard'
+import BillStatements from './pages/BillStatements'
 import PaymentReminders from './pages/PaymentReminders'
 import Layout from './components/Layout'
 
@@ -43,6 +44,7 @@ function App() {
             <Route path="credit-cards" element={<CreditCards />} />
             <Route path="credit-cards/add" element={<AddCreditCard />} />
             <Route path="credit-cards/edit/:id" element={<EditCreditCard />} />
+            <Route path="credit-cards/:id/statements" element={<BillStatements />} />
             <Route path="payment-reminders" element={<PaymentReminders />} />
           </Route>
         </Routes>
